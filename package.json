@@ -1,0 +1,14 @@
+{
+  "name": "ytdesktop",
+  "version": "1.0.0",
+  "description": "YouTube desktop",
+  "main": "main.js",
+  "scripts": {
+    "test": "electron ."
+  },
+  "author": "errico.dev",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^30.0.9"
+  }
+}
