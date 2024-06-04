@@ -3,6 +3,10 @@ const fs = require('fs');
 const { session } = require('electron');
 const { Menu } = require('electron');
 const ytdl = require('ytdl-core');
+const { type } = require('os');
+
+
+// END THE MENU TEMPLATE SHIT
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -39,7 +43,7 @@ function createWindow() {
             ]
         },
         {
-            label: 'Edit Text',
+            label: 'Edit',
             submenu: [
                 {
                     label: 'Undo',
@@ -77,16 +81,8 @@ function createWindow() {
             ]
         },
         {
-            label: 'Video',
+            label: 'YouTube',
             submenu: [
-                {
-                    label: 'Reload',
-                    accelerator: 'CmdOrCtrl+R',
-                    click: () => {
-                        win.reload();
-                        win.webContents.executeJavaScript(script); // the script must be re-injected so that the UI is updated to YTDesktop standards
-                    }
-                },
                 {
                     label: 'Toggle Theater Mode',
                     accelerator: 'CmdOrCtrl+Shift+C',
@@ -117,7 +113,7 @@ function createWindow() {
                         var videoURL = 'https://www.youtube.com/watch?v=' + videoID;
                         var fileName = videoID + '.mp4';
                         const filePath = require('path').join(app.getPath('desktop'), fileName);
-
+    
                         ytdl.getInfo(videoURL).then(info => {
                             const format = ytdl.chooseFormat(info.formats, { quality: 'highestvideo' });
                             if (format) {
@@ -141,26 +137,44 @@ function createWindow() {
                     type: 'separator'
                 },
                 {
-                    label: 'Open DevTools',
-                    accelerator: 'CmdOrCtrl+Shift+I',
-                    click: () => {
-                        win.webContents.openDevTools();
-                    }
-                }
-            ]
-        },
-        {
-            label: 'Help',
-            submenu: [
-                {
-                    label: 'About',
-                    click: () => {
-                        win.webContents.executeJavaScript('alert("YouDesktop v0.1 - Developed by toperri")');
-                    }
+                    label: 'Webpage Options',
+                    submenu: [
+                        {
+                            label: 'Back',
+                            accelerator: 'CmdOrCtrl+Left',
+                            click: () => {
+                                win.webContents.goBack();
+                            }
+                        },
+                        {
+                            label: 'Forward',
+                            accelerator: 'CmdOrCtrl+Right',
+                            click: () => {
+                                win.webContents.goForward();
+                            }
+                        },
+                        {
+                            label: 'Reload',
+                            accelerator: 'CmdOrCtrl+R',
+                            click: () => {
+                                win.reload();
+                                win.webContents.executeJavaScript(script); // the script must be re-injected so that the UI is updated to YTDesktop standards
+                            }
+                        },
+                        {
+                            label: 'Open DevTools',
+                            accelerator: 'CmdOrCtrl+Shift+I',
+                            click: () => {
+                                win.webContents.openDevTools();
+                            }
+                        }
+    
+                    ]
                 }
             ]
         }
     ];
+    
 
     const menu = Menu.buildFromTemplate(menuTemplate);
     Menu.setApplicationMenu(menu);
