@@ -115,7 +115,7 @@ function createWindow() {
                 {
                     label: 'About',
                     click: () => {
-                        win.webContents.executeJavaScript('alert("YouDesktop v0.1\nDeveloped by toperri\n\nThis is a desktop client for YouTube. It is not affiliated with YouTube in any way.")');
+                        win.webContents.executeJavaScript('alert("YouDesktop v0.1 - Developed by toperri")');
                     }
                 }
             ]
