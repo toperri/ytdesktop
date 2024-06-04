@@ -2,12 +2,13 @@ const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 const { session } = require('electron');
 const { Menu } = require('electron');
+const ytdl = require('ytdl-core');
 
 function createWindow() {
     const win = new BrowserWindow({
         width: 1280,
         height: 720,
-        titleBarStyle: 'hidden',
+        titleBarStyle: 'hiddenInset',
         webPreferences: {
             nodeIntegration: true,
             preload: __dirname + '/ytpreload.js'
@@ -21,7 +22,7 @@ function createWindow() {
 
     win.loadURL('https://youtube.com/');
 
-    const script = fs.readFileSync(__dirname + '/ytweb.js', 'utf8');
+    const script = fs.readFileSync(__dirname + '/ytweb-' + process.platform + '.js', 'utf8');
     win.webContents.executeJavaScript(script);
 
     const menuTemplate = [
@@ -87,7 +88,7 @@ function createWindow() {
                     }
                 },
                 {
-                    label: 'Toggle Cinema Mode',
+                    label: 'Toggle Theater Mode',
                     accelerator: 'CmdOrCtrl+Shift+C',
                     click: () => {
                         win.webContents.executeJavaScript('document.querySelector(".ytp-size-button").click()');
@@ -105,6 +106,45 @@ function createWindow() {
                     accelerator: 'CmdOrCtrl+Shift+S',
                     click: () => {
                         win.webContents.executeJavaScript('document.querySelector(".ytp-subtitles-button").click()');
+                    }
+                },
+                {
+                    label: 'Download Video',
+                    accelerator: 'CmdOrCtrl+D',
+                    click: () => {
+                        var curURL = win.webContents.getURL();
+                        var videoID = curURL.split('v=')[1].split('&')[0];
+                        var videoURL = 'https://www.youtube.com/watch?v=' + videoID;
+                        var fileName = videoID + '.mp4';
+                        const filePath = require('path').join(app.getPath('desktop'), fileName);
+
+                        ytdl.getInfo(videoURL).then(info => {
+                            const format = ytdl.chooseFormat(info.formats, { quality: 'highestvideo' });
+                            if (format) {
+                                ytdl(videoURL, { format: format })
+                                    .pipe(fs.createWriteStream(filePath))
+                                    .on('finish', () => {
+                                        win.webContents.executeJavaScript('alert("Video downloaded successfully! You can find it on your desktop with name ' + fileName + '.")');
+                                    })
+                                    .on('error', (err) => {
+                                        win.webContents.executeJavaScript('alert("Error downloading video: ' + err + '")');
+                                    });
+                            } else {
+                                win.webContents.executeJavaScript('alert("Error downloading video: no suitable format found")');
+                            }
+                        }).catch(err => {
+                            win.webContents.executeJavaScript('alert("Error downloading video: ' + err + '")');
+                        });
+                    }
+                },
+                {
+                    type: 'separator'
+                },
+                {
+                    label: 'Open DevTools',
+                    accelerator: 'CmdOrCtrl+Shift+I',
+                    click: () => {
+                        win.webContents.openDevTools();
                     }
                 }
             ]
@@ -144,7 +184,7 @@ app.on('web-contents-created', (event, contents) => {
     contents.on('will-navigate', (event, navigationUrl) => {
         const parsedUrl = new URL(navigationUrl)
 
-        if (parsedUrl.origin !== 'https://youtube.com') {
+        if (!['youtube','google'].includes(parsedUrl.hostname)) {
             event.preventDefault();
         }
     });

@@ -9,7 +9,8 @@
   "author": "errico.dev",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^30.0.9"
+    "electron": "^30.0.9",
+    "ytdl-core": "github:fent/node-ytdl-core"
   },
   "dependencies": {
     "pdf-lib": "^1.17.1"
