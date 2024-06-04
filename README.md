@@ -3,4 +3,4 @@
 </p>
 
 <h1 align="center">YouDesktop</h1>
-<p align="center"><b>An Electron client for YouTube in the works (not affiliated w/ google)</b></p>
+<p align="center"><b>A fully featured Electron client for YouTube in the works (not affiliated w/ google)</b></p>
