@@ -4,3 +4,4 @@
 
 <h1 align="center">YouDesktop</h1>
 <p align="center"><b>An Electron client for YouTube in the works</b></p>
+<p>To do: add login and YouTube Studio</p>
