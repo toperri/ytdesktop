@@ -10,9 +10,11 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^30.0.9",
-    "ytdl-core": "github:fent/node-ytdl-core"
+    "ytdl-core": "github:fent/node-ytdl-core",
+    "electron-prebuilt-compile": "@2.0.0"
   },
   "dependencies": {
+    "electron-forge": "^5.2.4",
     "pdf-lib": "^1.17.1"
   }
 }
