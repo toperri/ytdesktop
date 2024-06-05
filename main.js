@@ -8,6 +8,41 @@ const { type } = require('os');
 
 // END THE MENU TEMPLATE SHIT
 
+function downloadVid(win) {
+    var curURL = win.webContents.getURL();
+    var videoID = curURL.split('v=')[1].split('&')[0];
+    var videoURL = 'https://www.youtube.com/watch?v=' + videoID;
+    var fileName = videoID + '.mp4';
+    const filePath = require('path').join(app.getPath('desktop'), fileName);
+    // Create a new BrowserWindow instance for the modal window
+    var modalWindow = new BrowserWindow({
+        parent: win, // Set the parent window
+        modal: true, // Set the window as modal
+        width: 600, // Set the width of the modal window
+        height: 130, // Set the height of the modal window
+        show: false, // Hide the window initially
+        webPreferences: {
+            nodeIntegration: true
+        }
+    });
+
+    // Load the HTML file for the modal window
+    modalWindow.loadFile('modalIndex.html');
+
+   modalWindow.show();
+
+    modalWindow.on('close', () => {
+        modalWindow.destroy();
+    });
+    
+    ytdl(videoURL)
+        .pipe(fs.createWriteStream(filePath))
+        .on('finish', () => {
+            modalWindow.close();
+            // open the file
+            require('child_process').exec((process.platform == 'darwin' ? 'open' : 'start') + ' ' + filePath);
+        });
+}
 function createWindow() {
     const win = new BrowserWindow({
         width: 1280,
@@ -105,32 +140,10 @@ function createWindow() {
                     }
                 },
                 {
-                    label: 'Download Video',
+                    label: 'Download Video (BETA)',
                     accelerator: 'CmdOrCtrl+D',
                     click: () => {
-                        var curURL = win.webContents.getURL();
-                        var videoID = curURL.split('v=')[1].split('&')[0];
-                        var videoURL = 'https://www.youtube.com/watch?v=' + videoID;
-                        var fileName = videoID + '.mp4';
-                        const filePath = require('path').join(app.getPath('desktop'), fileName);
-    
-                        ytdl.getInfo(videoURL).then(info => {
-                            const format = ytdl.chooseFormat(info.formats, { quality: 'highestvideo' });
-                            if (format) {
-                                ytdl(videoURL, { format: format })
-                                    .pipe(fs.createWriteStream(filePath))
-                                    .on('finish', () => {
-                                        win.webContents.executeJavaScript('alert("Video downloaded successfully! You can find it on your desktop with name ' + fileName + '.")');
-                                    })
-                                    .on('error', (err) => {
-                                        win.webContents.executeJavaScript('alert("Error downloading video: ' + err + '")');
-                                    });
-                            } else {
-                                win.webContents.executeJavaScript('alert("Error downloading video: no suitable format found")');
-                            }
-                        }).catch(err => {
-                            win.webContents.executeJavaScript('alert("Error downloading video: ' + err + '")');
-                        });
+                        downloadVid(win);
                     }
                 },
                 {
@@ -198,7 +211,7 @@ app.on('web-contents-created', (event, contents) => {
     contents.on('will-navigate', (event, navigationUrl) => {
         const parsedUrl = new URL(navigationUrl)
 
-        if (!['youtube','google'].includes(parsedUrl.hostname)) {
+        if (!parsedUrl.origin.includes('youtube.com')) {
             event.preventDefault();
         }
     });
