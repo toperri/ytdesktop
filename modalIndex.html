@@ -9,16 +9,31 @@
             text-align: center;
             overflow: hidden;
         }
+        .pbar {
+            width: 95%;
+            margin: 0 auto;
+            height: 30px;
+            border: 1px solid grey;
+        }
+        .pbargrey {
+            width: 0%;
+            height: 30px;
+            background-color: grey;
+            transition: width 0.8s;
+        }
     </style>
-    <title>Downloading Video</title>
+    <title></title>
 </head>
 <body>
     <h1 style="text-align: center;">Downloading video...</h1>
-    <p id="progress"></p>
+    <div class="pbar">
+        <div class="pbargrey">
+        </div>
+    </div>
 </body>
 <script>
     window.setProgress = (progress) => {
-        document.getElementById('progress').innerText = progress;
+        document.querySelector('.pbargrey').style.width = progress + '%';
     }
 </script>
 </html>

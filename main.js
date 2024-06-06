@@ -7,6 +7,9 @@ const { dialog } = require('electron');
 const ytdl = require('ytdl-core');
 const fluentFFmpeg = require('fluent-ffmpeg');
 const URL = require('url').URL;
+const express = require('express');
+
+
 
 function downloadVidAsMP4(win) {
     var curURL = win.webContents.getURL();
@@ -46,9 +49,9 @@ function downloadVidAsMP4(win) {
         height: 180, // Set the height of the modal window
         show: false, // Hide the window initially
         resizable: false,
+        titleBarStyle: 'hidden',
         minimizable: false,
         maximizable: false,
-        closable: false,
         webPreferences: {
             nodeIntegration: true,
             preload: './modalPreload.js'
@@ -66,25 +69,25 @@ function downloadVidAsMP4(win) {
 
     fs.mkdirSync(app.getPath('desktop') + '/' + fileName, { recursive: true }, (err) => {});
     
-    modalWindow.webContents.executeJavaScript('window.setProgress("Downloading audio tracks...")');
+    modalWindow.webContents.executeJavaScript('window.setProgress("25")');
     ytdl(videoURL, { filter: 'audioonly', format: 'ogg' })
         .pipe(fs.createWriteStream(app.getPath('desktop') + '/' + fileName + '/audio.mp3'))
         .on('finish', () => {
-            modalWindow.webContents.executeJavaScript('window.setProgress("Downloading video tracks...")');
+            modalWindow.webContents.executeJavaScript('window.setProgress("50")');
             ytdl(videoURL, { filter: 'videoonly', format: 'mp4' })
                 .pipe(fs.createWriteStream(app.getPath('desktop') + '/' + fileName + '/video.mp4'))
                 .on('finish', () => {
-                    modalWindow.webContents.executeJavaScript('window.setProgress("Merging tracks...")');
+                    modalWindow.webContents.executeJavaScript('window.setProgress("75")');
                     fluentFFmpeg()
                         .input(app.getPath('desktop') + '/' + fileName + '/video.mp4')
                         .input(app.getPath('desktop') + '/' + fileName + '/audio.mp3')
                         .output(app.getPath('desktop') + '/' + videoName + '.mp4')
                         .on('progress', (progress) => {
                             const percentage = progress.percent;
-                            modalWindow.webContents.executeJavaScript(`window.setProgress("Merging tracks...")`);
+                            modalWindow.webContents.executeJavaScript(`window.setProgress("90")`);
                         })
                         .on('end', () => {
-                            
+                            modalWindow.webContents.executeJavaScript(`window.setProgress("100")`);
                             modalWindow.close();
                             fs.rmSync(app.getPath('desktop') + '/' + fileName + '/audio.mp3', { recursive: true });
                             fs.rmSync(app.getPath('desktop') + '/' + fileName + '/video.mp4', { recursive: true });
@@ -143,7 +146,7 @@ function downloadVidAsMP3(win) {
         show: false, // Hide the window initially
         resizable: false,
         maximizable: false,
-        closable: false,
+        titleBarStyle: 'hidden',
         minimizable: false,
         webPreferences: {
             nodeIntegration: true,
@@ -160,7 +163,7 @@ function downloadVidAsMP3(win) {
         modalWindow.destroy();
     });
     
-    modalWindow.webContents.executeJavaScript('window.setProgress("Downloading audio...")');
+    modalWindow.webContents.executeJavaScript('window.setProgress("0")');
     ytdl(videoURL, { filter: 'audioonly', format: 'ogg' })
         .pipe(fs.createWriteStream(app.getPath('desktop') + '/' + videoName + '.ogg'))
         .on('finish', () => {
