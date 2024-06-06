@@ -1,48 +1,188 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, ipcRenderer } = require('electron');
 const fs = require('fs');
 const { session } = require('electron');
-const { Menu } = require('electron');
-const ytdl = require('ytdl-core');
+const { Menu, Tray } = require('electron');
 const { type } = require('os');
+const { dialog } = require('electron');
+const ytdl = require('ytdl-core');
+const fluentFFmpeg = require('fluent-ffmpeg');
+const URL = require('url').URL;
 
-
-// END THE MENU TEMPLATE SHIT
-
-function downloadVid(win) {
+function downloadVidAsMP4(win) {
     var curURL = win.webContents.getURL();
-    var videoID = curURL.split('v=')[1].split('&')[0];
+    if (!curURL.includes('watch'))
+    {
+        // Show an Electron alert dialog
+        dialog.showMessageBox(win, {
+            type: 'error',
+            title: 'Error',
+            message: 'You are not playing a video.',
+            buttons: ['Alright']
+        });
+        return;
+    }
+    var videoID = curURL.split('v=');
+    if (videoID.length < 2)
+    {
+        // Show an Electron alert dialog
+        dialog.showMessageBox(win, {
+            type: 'error',
+            title: 'Error',
+            message: 'You are not playing a video.',
+            buttons: ['Alright']
+        });
+        return;
+    }
+    else {
+        videoID = curURL.split('v=')[1].split('&')[0];
+    }
     var videoURL = 'https://www.youtube.com/watch?v=' + videoID;
-    var fileName = videoID + '.mp4';
+    var videoName = win.webContents.getTitle().split(' - YouTube')[0];
+    var fileName = videoID + '-TMP';
     const filePath = require('path').join(app.getPath('desktop'), fileName);
     // Create a new BrowserWindow instance for the modal window
     var modalWindow = new BrowserWindow({
-        parent: win, // Set the parent window
-        modal: true, // Set the window as modal
         width: 600, // Set the width of the modal window
-        height: 130, // Set the height of the modal window
+        height: 180, // Set the height of the modal window
         show: false, // Hide the window initially
+        resizable: false,
+        minimizable: false,
+        maximizable: false,
+        closable: false,
         webPreferences: {
-            nodeIntegration: true
+            nodeIntegration: true,
+            preload: './modalPreload.js'
         }
     });
 
     // Load the HTML file for the modal window
     modalWindow.loadFile('modalIndex.html');
 
-   modalWindow.show();
+    modalWindow.show();
+
+    modalWindow.on('close', () => {
+        modalWindow.destroy();
+    });
+
+    fs.mkdirSync(app.getPath('desktop') + '/' + fileName, { recursive: true }, (err) => {});
+    
+    modalWindow.webContents.executeJavaScript('window.setProgress("Downloading audio tracks...")');
+    ytdl(videoURL, { filter: 'audioonly', format: 'ogg' })
+        .pipe(fs.createWriteStream(app.getPath('desktop') + '/' + fileName + '/audio.mp3'))
+        .on('finish', () => {
+            modalWindow.webContents.executeJavaScript('window.setProgress("Downloading video tracks...")');
+            ytdl(videoURL, { filter: 'videoonly', format: 'mp4' })
+                .pipe(fs.createWriteStream(app.getPath('desktop') + '/' + fileName + '/video.mp4'))
+                .on('finish', () => {
+                    modalWindow.webContents.executeJavaScript('window.setProgress("Merging tracks...")');
+                    fluentFFmpeg()
+                        .input(app.getPath('desktop') + '/' + fileName + '/video.mp4')
+                        .input(app.getPath('desktop') + '/' + fileName + '/audio.mp3')
+                        .output(app.getPath('desktop') + '/' + videoName + '.mp4')
+                        .on('progress', (progress) => {
+                            const percentage = progress.percent;
+                            modalWindow.webContents.executeJavaScript(`window.setProgress("Merging tracks...")`);
+                        })
+                        .on('end', () => {
+                            
+                            modalWindow.close();
+                            fs.rmSync(app.getPath('desktop') + '/' + fileName + '/audio.mp3', { recursive: true });
+                            fs.rmSync(app.getPath('desktop') + '/' + fileName + '/video.mp4', { recursive: true });
+                            fs.rmdirSync(app.getPath('desktop') + '/' + fileName);
+                            // Show an Electron alert dialog
+                            dialog.showMessageBox(win, {
+                                type: 'info',
+                                title: 'Success',
+                                message: 'Video downloaded successfully! You may find it on your desktop.',
+                                buttons: ['Alright']
+                            });
+                        })
+                        .run();
+                });
+        });
+    
+}
+
+
+function downloadVidAsMP3(win) {
+    var curURL = win.webContents.getURL();
+    if (!curURL.includes('watch'))
+    {
+        // Show an Electron alert dialog
+        dialog.showMessageBox(win, {
+            type: 'error',
+            title: 'Error',
+            message: 'You are not playing a video.',
+            buttons: ['Alright']
+        });
+        return;
+    }
+    var videoID = curURL.split('v=');
+    if (videoID.length < 2)
+    {
+        // Show an Electron alert dialog
+        dialog.showMessageBox(win, {
+            type: 'error',
+            title: 'Error',
+            message: 'You are not playing a video.',
+            buttons: ['Alright']
+        });
+        return;
+    }
+    else {
+        videoID = curURL.split('v=')[1].split('&')[0];
+    }
+    var videoURL = 'https://www.youtube.com/watch?v=' + videoID;
+    var videoName = win.webContents.getTitle().split(' - YouTube')[0];
+    var fileName = videoID + '-TMP';
+    const filePath = require('path').join(app.getPath('desktop'), fileName);
+    // Create a new BrowserWindow instance for the modal window
+    var modalWindow = new BrowserWindow({
+        width: 600, // Set the width of the modal window
+        height: 180, // Set the height of the modal window
+        show: false, // Hide the window initially
+        resizable: false,
+        maximizable: false,
+        closable: false,
+        minimizable: false,
+        webPreferences: {
+            nodeIntegration: true,
+            preload: './modalPreload.js'
+        }
+    });
+
+    // Load the HTML file for the modal window
+    modalWindow.loadFile('modalIndex.html');
+
+    modalWindow.show();
 
     modalWindow.on('close', () => {
         modalWindow.destroy();
     });
     
-    ytdl(videoURL)
-        .pipe(fs.createWriteStream(filePath))
+    modalWindow.webContents.executeJavaScript('window.setProgress("Downloading audio...")');
+    ytdl(videoURL, { filter: 'audioonly', format: 'ogg' })
+        .pipe(fs.createWriteStream(app.getPath('desktop') + '/' + videoName + '.ogg'))
         .on('finish', () => {
             modalWindow.close();
-            // open the file
-            require('child_process').exec((process.platform == 'darwin' ? 'open' : 'start') + ' ' + filePath);
+            // Show an Electron alert dialog
+            dialog.showMessageBox(win, {
+                type: 'info',
+                title: 'Success',
+                message: 'Audio downloaded successfully! You may find it on your desktop.',
+                buttons: ['Alright']
+            });
+            
         });
+
+    
 }
+
+
+
+
+
+
 function createWindow() {
     const win = new BrowserWindow({
         width: 1280,
@@ -54,12 +194,13 @@ function createWindow() {
         }
     });
 
-    win.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
-        details.requestHeaders['Client'] = 'YouDesktop';
-        callback({ cancel: false, requestHeaders: details.requestHeaders });
-    });
-
-    win.loadURL('https://youtube.com/');
+    // 10% chance of rickroll
+    if (Math.random() > 0.97) {
+        win.loadURL('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    }
+    else {
+        win.loadURL('https://youtube.com/');
+    }
 
     const script = fs.readFileSync(__dirname + '/ytweb-' + process.platform + '.js', 'utf8');
     win.webContents.executeJavaScript(script);
@@ -140,11 +281,57 @@ function createWindow() {
                     }
                 },
                 {
-                    label: 'Download Video (BETA)',
-                    accelerator: 'CmdOrCtrl+D',
+                    label: 'Play in Background',
+                    accelerator: 'CmdOrCtrl+Shift+B',
                     click: () => {
-                        downloadVid(win);
+                        win.hide();
+
+                        let tray = null;
+
+                        function createTray() {
+                            const trayIconPath = __dirname + '/yt-tray.png'; // Replace with the actual path to your tray icon image
+
+                            tray = new Tray(trayIconPath);
+
+                            const contextMenu = Menu.buildFromTemplate([
+                                {
+                                    label: 'Show Video',
+                                    click: () => {
+                                        tray.destroy();
+                                        win.show();
+                                    }
+                                },
+                                {
+                                    label: 'Exit',
+                                    click: () => {
+                                        app.quit();
+                                    }
+                                }
+                            ]);
+
+                            tray.setToolTip('YouTube Desktop');
+                            tray.setContextMenu(contextMenu);
+                        }
+
+                        createTray();
                     }
+                },
+                {
+                    label: 'Download Options',
+                    submenu: [
+                        {
+                            label: 'Download Video as MP4',
+                            click: () => {
+                                downloadVidAsMP4(win);
+                            }
+                        },
+                        {
+                            label: 'Download Video as OGG',
+                            click: () => {
+                                downloadVidAsMP3(win);
+                            }
+                        }
+                    ]
                 },
                 {
                     type: 'separator'
@@ -191,6 +378,76 @@ function createWindow() {
 
     const menu = Menu.buildFromTemplate(menuTemplate);
     Menu.setApplicationMenu(menu);
+
+    win.webContents.on('context-menu', (event, params) => {
+        const { x, y } = params;
+
+        const contextMenuTemplate = (win.webContents.getURL().includes('youtube.com/watch') ? [
+            {
+                label: 'Cut',
+                role: 'cut'
+            },
+            {
+                label: 'Copy',
+                role: 'copy'
+            },
+            {
+                label: 'Paste',
+                role: 'paste'
+            },
+            {
+                type: 'separator'
+            },
+            {
+                label: 'Download Video (BETA)',
+                click: () => {
+                    downloadVid(win);
+                }
+            },
+            {
+                label: 'Toggle Theater Mode',
+                click: () => {
+                    win.webContents.executeJavaScript('document.querySelector(".ytp-size-button").click()');
+                }
+            }
+        ] : [
+            {
+                label: 'Cut',
+                role: 'cut',
+                enabled: true
+            },
+            {
+                label: 'Copy',
+                role: 'copy',
+                enabled: true
+            },
+            {
+                label: 'Paste',
+                role: 'paste',
+                enabled: true
+            },
+            {
+                type: 'separator'
+            },
+            {
+                label: 'Download Video (BETA)',
+                click: () => {
+                    downloadVid(win);
+                },
+                enabled: false
+            },
+            {
+                label: 'Toggle Theater Mode',
+                click: () => {
+                    win.webContents.executeJavaScript('document.querySelector(".ytp-size-button").click()');
+                },
+                enabled: false
+            }
+        ]);
+
+        const contextMenu = Menu.buildFromTemplate(contextMenuTemplate);
+        contextMenu.popup({ window: win });
+    });
 }
 
 app.whenReady().then(() => {
@@ -205,14 +462,13 @@ app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit();
 });
 
-const URL = require('url').URL;
-
 app.on('web-contents-created', (event, contents) => {
     contents.on('will-navigate', (event, navigationUrl) => {
         const parsedUrl = new URL(navigationUrl)
 
-        if (!parsedUrl.origin.includes('youtube.com')) {
+        if (parsedUrl.origin != 'https://youtube.com/') {
             event.preventDefault();
+            shell.openExternal(navigationUrl);
         }
     });
 });

@@ -6,19 +6,19 @@
     <style>
         * {
             font-family: 'Verdana';
+            text-align: center;
             overflow: hidden;
         }
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
     </style>
-    <title>MODAL WINDOW INDEX</title>
+    <title>Downloading Video</title>
 </head>
 <body>
     <h1 style="text-align: center;">Downloading video...</h1>
-    <spacer-a style="width: 15px;"></spacer-a>
-    <img src="./loading.gif" alt="" width="40px" height="40px">
+    <p id="progress"></p>
 </body>
+<script>
+    window.setProgress = (progress) => {
+        document.getElementById('progress').innerText = progress;
+    }
+</script>
 </html>
